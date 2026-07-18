@@ -140,9 +140,8 @@ CORS_ALLOWED_ORIGINS = [
     for o in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
     if o.strip()
 ]
-# While iterating in local dev you can instead set CORS_ALLOW_ALL_ORIGINS = True,
-# but keep it False in production and rely on CORS_ALLOWED_ORIGINS above.
-CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
+# Enable all origins for Vercel preview domains and MVP ease of use.
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 # --- Razorpay ----------------------------------------------------------

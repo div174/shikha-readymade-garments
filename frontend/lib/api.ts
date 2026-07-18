@@ -43,7 +43,7 @@ function toFrontendProduct(bp: BackendProduct): Product {
   return {
     id: String(bp.id),
     name: bp.name,
-    categories: bp.categories.map((c) => c.name),
+    categories: bp.categories?.map((c) => c.name) ?? [],
     price,
     mrp,
     image: bp.image ?? "",

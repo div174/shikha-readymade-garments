@@ -116,7 +116,7 @@ class CreateOrderView(APIView):
                             message=message,
                             from_email=getattr(settings, "EMAIL_HOST_USER", None),
                             recipient_list=[getattr(settings, "ADMIN_NOTIFICATION_EMAIL", "sureshsinghal3717@gmail.com")],
-                            fail_silently=True,
+                            fail_silently=False,
                         )
                     except Exception as e:
                         logger.error("Failed to send order email: %s", str(e))
