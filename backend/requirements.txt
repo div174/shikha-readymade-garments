@@ -1,0 +1,15 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14
+dj-database-url>=2.1
+django-cors-headers>=4.3
+razorpay>=1.4
+psycopg2-binary>=2.9
+gunicorn>=21.2
+django-import-export==3.3.6
+django-jazzmin==3.0.0
+
+python-dotenv
+
+Pillow
+
+whitenoise
