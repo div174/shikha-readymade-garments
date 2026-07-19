@@ -21,13 +21,12 @@ class Category(models.Model):
 class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    # Legacy fields (kept for backward compatibility, but variants will override these)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    mrp = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], null=True, blank=True, help_text="Maximum Retail Price (for strikethrough/discount)")
+    mrp = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], null=True, blank=True)
     stock = models.PositiveIntegerField(default=0)
-    categories = models.ManyToManyField(
-        Category, related_name="products", blank=True
-    )
-    sizes = models.CharField(max_length=255, blank=True, default="Free Size", help_text="Comma-separated sizes, e.g., 'S, M, L, XL'")
+    categories = models.ManyToManyField(Category, related_name="products", blank=True)
+    sizes = models.CharField(max_length=255, blank=True, default="Free Size")
     image = models.ImageField(upload_to="products/", blank=True, null=True)
     available_for_delivery = models.BooleanField(default=True)
 
@@ -43,7 +42,24 @@ class Product(models.Model):
 
     @property
     def in_stock(self):
+        if self.variants.exists():
+            return self.variants.filter(stock__gt=0).exists()
         return self.stock > 0
+
+class ProductVariant(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")
+    size = models.CharField(max_length=50)
+    price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    mrp = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], null=True, blank=True)
+    stock = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        app_label = "store"
+        ordering = ["id"]
+        unique_together = ("product", "size")
+
+    def __str__(self):
+        return f"{self.product.name} - {self.size}"
 
 
 class ProductImage(models.Model):

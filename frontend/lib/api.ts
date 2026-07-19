@@ -5,7 +5,7 @@
  * Override via NEXT_PUBLIC_API_BASE env var in production.
  */
 
-import type { Product } from "@/lib/products";
+import type { Product, ProductVariant } from "@/lib/products";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "https://shikha-readymade-garments.onrender.com/api/";
@@ -23,6 +23,7 @@ type BackendProduct = {
   sizes: string;
   image: string | null;
   images: { id: number; image: string }[];
+  variants: { id: number; size: string; price: string; mrp: string | null; stock: number }[];
   available_for_delivery: boolean;
   created_at: string;
 };
@@ -51,6 +52,13 @@ function toFrontendProduct(bp: BackendProduct): Product {
     description: bp.description,
     sizes: bp.sizes ? bp.sizes.split(",").map((s) => s.trim()).filter(Boolean) : ["Free Size"],
     colors: [{ name: "Default", hex: "#7a1f2b" }],
+    variants: bp.variants?.map(v => ({
+      id: String(v.id),
+      size: v.size,
+      price: parseFloat(v.price),
+      mrp: v.mrp ? parseFloat(v.mrp) : parseFloat(v.price),
+      stock: v.stock
+    })) || []
   };
 }
 
@@ -101,11 +109,38 @@ export type CreateOrderPayload = {
   items: { product: number; quantity: number; size: string }[];
 };
 
+let cachedCsrfToken: string | null = null;
+
+export async function fetchCsrfToken() {
+  if (cachedCsrfToken) return cachedCsrfToken;
+  try {
+    const res = await fetch(`${API_BASE}csrf/`, { credentials: "omit" });
+    if (res.ok) {
+      // Django sets csrftoken in cookies, but browsers may block third-party cookies.
+      // So in a decoupled setup, we'd ideally read it from cookies or headers, 
+      // but if we are on same domain we can read document.cookie.
+      // However, we are on different domains. For now, we will rely on standard credentials.
+      // This is a complex topic for Vercel->Render. Let's send a basic token if it's there.
+    }
+  } catch (e) {
+    console.error("Failed to fetch CSRF", e);
+  }
+}
+
 /** Create an order on the backend. */
 export async function createOrder(payload: CreateOrderPayload) {
+  // await fetchCsrfToken();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  
+  // Get csrftoken from document cookies if present
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(new RegExp('(^| )csrftoken=([^;]+)'));
+    if (match) headers['X-CSRFToken'] = match[2];
+  }
+
   const res = await fetch(`${API_BASE}orders/create/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   });
 

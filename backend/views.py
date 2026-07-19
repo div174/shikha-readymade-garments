@@ -12,8 +12,9 @@ from django.core.mail import send_mail
 # pyrefly: ignore [missing-import]
 from rest_framework import viewsets, status, filters
 # pyrefly: ignore [missing-import]
-# pyrefly: ignore [missing-import]
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 import threading
 # pyrefly: ignore [missing-import]
 from rest_framework.response import Response
@@ -25,6 +26,16 @@ from .serializers import CategorySerializer, ProductSerializer, OrderSerializer,
 
 logger = logging.getLogger(__name__)
 
+class CSRFTokenView(APIView):
+    """
+    GET /api/csrf/
+    Returns a CSRF token in a cookie and in the JSON response.
+    """
+    permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request):
+        return Response({"message": "CSRF cookie set"})
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -106,25 +117,20 @@ class CreateOrderView(APIView):
                 response_data["currency"] = "INR"
 
             try:
-                item_details = "\n".join([f"- {item.quantity}x {item.product.name} (Rs.{item.price * item.quantity})" for item in order.items.all()])
+                item_details = "\n".join([f"- {item.quantity}x {item.product.name} ({item.size} - Rs.{item.price * item.quantity})" for item in order.items.all()])
                 message = f"New order received!\n\nCustomer: {order.customer_name}\nPhone: {order.phone}\nAddress: {order.address}\nPincode: {order.pincode}\nPayment Method: {order.payment_method}\n\nItems:\n{item_details}\n\nTotal: Rs.{order.total_amount}"
                 
-                def send_order_email():
-                    try:
-                        send_mail(
-                            subject=f"New Order #{order.id} from {order.customer_name}",
-                            message=message,
-                            from_email=getattr(settings, "EMAIL_HOST_USER", None),
-                            recipient_list=[getattr(settings, "ADMIN_NOTIFICATION_EMAIL", "sureshsinghal3717@gmail.com")],
-                            fail_silently=False,
-                        )
-                    except Exception as e:
-                        logger.error("Failed to send order email: %s", str(e))
-                
-                # Run email sending in background thread so it doesn't block API response
-                threading.Thread(target=send_order_email).start()
+                # Send email synchronously to avoid Render thread termination
+                # Use fail_silently=False to catch errors in logs
+                send_mail(
+                    subject=f"New Order #{order.id} from {order.customer_name}",
+                    message=message,
+                    from_email=getattr(settings, "EMAIL_HOST_USER", None),
+                    recipient_list=[getattr(settings, "ADMIN_NOTIFICATION_EMAIL", "sureshsinghal3717@gmail.com")],
+                    fail_silently=False,
+                )
             except Exception as e:
-                logger.error("Failed to start email thread: %s", str(e))
+                logger.error("Failed to send order email synchronously: %s", str(e))
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 

@@ -3,7 +3,7 @@ from rest_framework import serializers
 # pyrefly: ignore [missing-import]
 from django.db import transaction
 
-from .models import Category, Product, ProductImage, Order, OrderItem
+from .models import Category, Product, ProductImage, Order, OrderItem, ProductVariant
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -18,9 +18,15 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image"]
 
 
+class ProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = ["id", "size", "price", "mrp", "stock"]
+
 class ProductSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
@@ -35,6 +41,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "sizes",
             "image",
             "images",
+            "variants",
             "available_for_delivery",
             "created_at",
         ]
@@ -122,20 +129,32 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         for item in items_data:
             product = item["product"]
             quantity = item["quantity"]
+            size = item.get("size", "Free Size")
 
-            if product.stock < quantity:
-                raise serializers.ValidationError(
-                    f"Insufficient stock for '{product.name}'. Available: {product.stock}"
-                )
+            # Check if variant exists
+            variant = product.variants.filter(size=size).first()
+            if variant:
+                if variant.stock < quantity:
+                    raise serializers.ValidationError(
+                        f"Insufficient stock for '{product.name}' size '{size}'. Available: {variant.stock}"
+                    )
+                line_price = variant.price
+                variant.stock -= quantity
+                variant.save(update_fields=["stock"])
+            else:
+                # Fallback to legacy product fields
+                if product.stock < quantity:
+                    raise serializers.ValidationError(
+                        f"Insufficient stock for '{product.name}'. Available: {product.stock}"
+                    )
+                line_price = product.price
+                product.stock -= quantity
+                product.save(update_fields=["stock"])
 
-            line_price = product.price
             total += line_price * quantity
             order_items.append(
-                OrderItem(order=order, product=product, quantity=quantity, price=line_price, size=item.get("size", "Free Size"))
+                OrderItem(order=order, product=product, quantity=quantity, price=line_price, size=size)
             )
-
-            product.stock -= quantity
-            product.save(update_fields=["stock"])
 
         OrderItem.objects.bulk_create(order_items)
 

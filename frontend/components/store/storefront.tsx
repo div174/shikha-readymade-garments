@@ -88,9 +88,9 @@ export function Storefront() {
       const matchesPrice = product.price <= maxPrice
       const matchesSearch =
         query === '' ||
-        product.name.toLowerCase().includes(query) ||
-        product.categories.some(c => c.toLowerCase().includes(query)) ||
-        product.description.toLowerCase().includes(query)
+        product.name?.toLowerCase().includes(query) ||
+        product.categories?.some(c => c.toLowerCase().includes(query)) ||
+        product.description?.toLowerCase().includes(query)
       return matchesCategory && matchesPrice && matchesSearch
     })
   }, [selected, maxPrice, search, products])
@@ -103,7 +103,10 @@ export function Storefront() {
           activeCategory={activeCategory}
           onSelectCategory={selectFromNav}
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={(val) => {
+            setSearch(val);
+            if (val.trim() !== '') scrollToGrid();
+          }}
         />
 
         <main className="flex-1">

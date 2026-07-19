@@ -2,7 +2,7 @@ from import_export.admin import ImportExportModelAdmin, ImportExportActionModelA
 # pyrefly: ignore [missing-import]
 from django.contrib import admin
 
-from .models import Category, Product, ProductImage, Order, OrderItem
+from .models import Category, Product, ProductImage, Order, OrderItem, ProductVariant
 
 
 @admin.register(Category)
@@ -21,6 +21,10 @@ class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
 
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 1
+
 @admin.register(Product)
 class ProductAdmin(ImportExportActionModelAdmin):
     list_display = ("name", "get_categories", "price", "stock", "available_for_delivery")
@@ -30,7 +34,7 @@ class ProductAdmin(ImportExportActionModelAdmin):
     def get_categories(self, obj):
         return ", ".join([c.name for c in obj.categories.all()])
     get_categories.short_description = "Categories"
-    inlines = [ProductImageInline]
+    inlines = [ProductVariantInline, ProductImageInline]
 
 @admin.register(ProductImage)
 class ProductImageAdmin(admin.ModelAdmin):
