@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { X, Check, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCart } from '@/components/store/cart-context'
 import { formatINR, type Product } from '@/lib/products'
-import { toast } from 'sonner'
 
 interface ProductModalProps {
   product: Product | null
@@ -15,6 +14,7 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
   const { addItem } = useCart()
   const [selectedSize, setSelectedSize] = useState(product?.sizes[0] || '')
   const [mainImage, setMainImage] = useState(product?.image ?? "")
+  const [added, setAdded] = useState(false)
 
   useEffect(() => {
     if (product) {
@@ -40,8 +40,11 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
 
   function handleAddToCart() {
     addItem({ ...product, price: currentPrice, mrp: currentMrp }, selectedSize, 1)
-    toast.success(`${product.name} added to cart`)
-    onClose()
+    setAdded(true)
+    setTimeout(() => {
+      setAdded(false)
+      onClose()
+    }, 800)
   }
 
   return (
@@ -179,15 +182,31 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
           <div className="mt-auto pt-6 border-t border-border">
             <button
               onClick={handleAddToCart}
-              disabled={outOfStock}
+              disabled={outOfStock || added}
               className={`w-full rounded-xl py-4 text-lg font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
                 outOfStock 
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                  : added
+                  ? 'bg-green-600 text-white'
                   : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]'
               }`}
             >
-              <ShoppingCart className="size-5" />
-              {outOfStock ? 'Out of Stock' : 'Add to Cart'}
+              {added ? (
+                <>
+                  <Check className="size-5" />
+                  Added to Cart
+                </>
+              ) : outOfStock ? (
+                <>
+                  <ShoppingCart className="size-5" />
+                  Out of Stock
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="size-5" />
+                  Add to Cart
+                </>
+              )}
             </button>
           </div>
         </div>
